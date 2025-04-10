@@ -30,7 +30,7 @@ namespace Server
 
             var temp = new Dictionary<PacketCommand, Type>();
 
-            var types = Assembly.GetExecutingAssembly().GetTypes().Where(t => t.Name.StartsWith(GlobalConstants.ProtoMessagePrefix));
+            var types = Assembly.GetExecutingAssembly().GetTypes().Where(t => t.Name.StartsWith(GlobalConstants.Network.ProtoMessagePrefix));
             foreach (var type in types)
             {
                 if (requestCommands.TryGetValue(type.Name, out var command) == false)

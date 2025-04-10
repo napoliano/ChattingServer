@@ -25,6 +25,9 @@ namespace Server
 
         private readonly Queue<SendPacket> _sendQueue = new();
         private readonly Channel<Action> _eventChannel = Channel.CreateUnbounded<Action>();
+        private readonly CancellationTokenSource _cancellationToken = new();
+
+        private int _sessionState = GlobalConstants.SessionState.Connected;
 
 
         public ClientSession(in Socket socket)
@@ -36,10 +39,10 @@ namespace Server
             _receiveEventArgsEx = ObjectPool<SocketAsyncEventArgsEx>.Rent();
             _sendEventArgsEx = ObjectPool<SocketAsyncEventArgsEx>.Rent();
 
-            _receiveEventArgsEx.SAEA.SetBuffer(_receiveEventArgsEx.Buffer, 0, GlobalConstants.MaxPacketSize);
+            _receiveEventArgsEx.SAEA.SetBuffer(_receiveEventArgsEx.Buffer, 0, GlobalConstants.Network.MaxPacketSize);
             _receiveEventArgsEx.SAEA.Completed += OnReceiveCompleted;
 
-            _sendEventArgsEx.SAEA.SetBuffer(_sendEventArgsEx.Buffer, 0, GlobalConstants.MaxPacketSize);
+            _sendEventArgsEx.SAEA.SetBuffer(_sendEventArgsEx.Buffer, 0, GlobalConstants.Network.MaxPacketSize);
             _sendEventArgsEx.SAEA.Completed += OnSendCompleted;
 
             _ = RunEventLoopAsync();
@@ -52,6 +55,9 @@ namespace Server
 
         private void StartReceive(SocketAsyncEventArgs e)
         {
+            if (_sessionState == GlobalConstants.SessionState.Disconnected)
+                return;
+
             try
             {
                 if (_socket.ReceiveAsync(e) == false)
@@ -127,7 +133,7 @@ namespace Server
             if ((remainBytes > 0) && (parseBytes > 0))
                 e.Buffer.AsSpan(parseBytes, remainBytes).CopyTo(e.Buffer);
 
-            e.SetBuffer(remainBytes, GlobalConstants.MaxPacketSize - remainBytes);
+            e.SetBuffer(remainBytes, GlobalConstants.Network.MaxPacketSize - remainBytes);
 
             return true;
         }
@@ -160,6 +166,9 @@ namespace Server
 
         public void SendResponse<T>(PacketCommand command, T message) where T : class, IExtensible
         {
+            if (_sessionState == GlobalConstants.SessionState.Disconnected)
+                return;
+
             var packet = PacketSerializer.MakeSendPacket(command, message);
 
             _eventChannel.Writer.TryWrite(() =>
@@ -241,7 +250,7 @@ namespace Server
         {
             try
             {
-                await foreach (var action in _eventChannel.Reader.ReadAllAsync())
+                await foreach (var action in _eventChannel.Reader.ReadAllAsync(_cancellationToken.Token))
                     action?.Invoke();
             }
             catch (Exception ex)
@@ -253,27 +262,47 @@ namespace Server
 
         public void CloseSession()
         {
+            _sessionState = Interlocked.Exchange(ref _sessionState, GlobalConstants.SessionState.Disconnected);
+            if (_sessionState == GlobalConstants.SessionState.Disconnected)
+                return;
+
+            //채널 및 이벤트 루프 종료
             _eventChannel.Writer.Complete();
+            _cancellationToken.Cancel();
 
-            try
-            {
-                if (_socket.Connected)
-                    _socket.Shutdown(SocketShutdown.Both);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"Failed to shutdown socket of session - Id:{_id}");
-            }
-            finally
-            {
-                _socket.Close();
-            }
+            ClientSessionManager.Instance.TryRemoveSession(_id);
 
-            _receiveEventArgsEx.SAEA.Completed -= OnReceiveCompleted;
-            _sendEventArgsEx.SAEA.Completed -= OnSendCompleted;
 
-            ObjectPool<SocketAsyncEventArgsEx>.Return(_receiveEventArgsEx);
-            ObjectPool<SocketAsyncEventArgsEx>.Return(_sendEventArgsEx);
+            //자원 정리
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(GlobalConstants.Time.OneSecondMs);
+
+                try
+                {
+                    if (_socket.Connected)
+                        _socket.Shutdown(SocketShutdown.Both);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"Failed to shutdown socket of session - Id:{_id}");
+                }
+                finally
+                {
+                    _socket.Close();
+                }
+
+                _receiveEventArgsEx.SAEA.Completed -= OnReceiveCompleted;
+                _sendEventArgsEx.SAEA.Completed -= OnSendCompleted;
+
+                ObjectPool<SocketAsyncEventArgsEx>.Return(_receiveEventArgsEx);
+                ObjectPool<SocketAsyncEventArgsEx>.Return(_sendEventArgsEx);
+
+                foreach (var sendPacket in _sendQueue)
+                {
+                    ObjectPool<SendPacket>.Return(sendPacket);
+                }
+            });
         }
     }
 }

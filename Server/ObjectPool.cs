@@ -29,7 +29,7 @@ namespace Server
             }
         }
 
-        private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<T> _pool = new DefaultObjectPool<T>(new ObjectPoolPolicy(), maximumRetained: 1024);
+        private static readonly Microsoft.Extensions.ObjectPool.ObjectPool<T> _pool = new DefaultObjectPool<T>(new ObjectPoolPolicy(), GlobalConstants.Network.MaxObjectPoolSize);
 
         public static T Rent()
         {

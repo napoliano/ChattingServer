@@ -16,10 +16,10 @@ namespace Server
         {
             var handlers = new Dictionary<PacketCommand, Action<ClientSession, object>>();
 
-            var methods = typeof(PacketHandler).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(m => m.Name.StartsWith(GlobalConstants.PacketHandlerPrefix));
+            var methods = typeof(PacketHandler).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(m => m.Name.StartsWith(GlobalConstants.Network.PacketHandlerPrefix));
             foreach (var method in methods)
             {
-                string subMethodName = method.Name[GlobalConstants.PacketHandlerPrefix.Length..];
+                string subMethodName = method.Name[GlobalConstants.Network.PacketHandlerPrefix.Length..];
                 if (Enum.TryParse(subMethodName, out PacketCommand command) == false)
                     continue;
 

@@ -9,9 +9,19 @@ using System.Runtime.InteropServices;
 namespace Server
 {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public record PacketHeader(short Size, short Command)
+    public readonly struct PacketHeader
     {
         public static int HeaderSize { get; } = Marshal.SizeOf(typeof(PacketHeader));
+
+        public short Size { get; }
+        
+        public short Command { get; }
+
+        public PacketHeader(short size, short command)
+        {
+            Size = size;
+            Command = command;
+        }
     }
 
 
@@ -33,12 +43,12 @@ namespace Server
     public class SendPacket : PacketBase, IResettable
     {
         public byte[] Buffer => _buffer;
-        private readonly byte[] _buffer = new byte[GlobalConstants.MaxPacketSize];
+        private readonly byte[] _buffer = new byte[GlobalConstants.Network.MaxPacketSize];
 
 
         public void Reset()
         {
-            Array.Clear(_buffer, 0, GlobalConstants.MaxPacketSize);
+            Array.Clear(_buffer, 0, GlobalConstants.Network.MaxPacketSize);
 
             _packetSize = 0;
         }

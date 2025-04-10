@@ -17,26 +17,27 @@ namespace Server
 
         public void AddSession(in ClientSession session)
         {
-            lock (_lock)
-            {
-                _sessions[session.Id] = session;
-            }
+            Monitor.Enter(_lock);
+            _sessions[session.Id] = session;
+            Monitor.Exit(_lock);
         }
 
         public bool TryRemoveSession(int userSocketId)
         {
-            lock (_lock)
-            {
-                return _sessions.Remove(userSocketId);
-            }
+            Monitor.Enter(_lock);
+            bool result = _sessions.Remove(userSocketId);
+            Monitor.Exit(_lock);
+
+            return result;
         }
 
         public bool TryGetSession(int sessionId, out ClientSession? session)
         {
-            lock (_lock)
-            {
-                return _sessions.TryGetValue(sessionId, out session);
-            }
+            Monitor.Enter(_lock);
+            bool result = _sessions.TryGetValue(sessionId, out session);
+            Monitor.Exit(_lock);
+
+            return result;
         }
     }
 }
