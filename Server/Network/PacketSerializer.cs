@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using ProtoBuf;
 
 
@@ -12,19 +11,18 @@ namespace Server
         {
             var packet = ObjectPool<SendPacket>.Rent();
 
-            using (var ms = new MemoryStream(packet.Buffer))
-            using (var writer = new BinaryWriter(ms))
-            {
-                var measure = Serializer.Measure(message);
-                short packetSize = (short)(PacketHeader.HeaderSize + measure.Length);
+            using var ms = new MemoryStream(packet.Buffer);
+            using var writer = new BinaryWriter(ms);
 
-                packet.SetPacketSize(packetSize);
+            var measure = Serializer.Measure(message);
+            short packetSize = (short)(PacketHeader.HeaderSize + measure.Length);
 
-                writer.Write(packetSize);
-                writer.Write((short)command);
+            packet.SetPacketSize(packetSize);
 
-                Serializer.Serialize(writer.BaseStream, message);
-            }
+            writer.Write(packetSize);
+            writer.Write((short)command);
+
+            Serializer.Serialize(writer.BaseStream, message);
 
             return packet;
         }

@@ -105,7 +105,7 @@ namespace Server
                     break;
 
                 int packetSize = MemoryMarshal.Read<short>(e.Buffer.AsSpan(parseBytes));
-                if ((packetSize < PacketHeader.HeaderSize) || (packetSize > Packet.MaxPacketSize))
+                if ((packetSize < PacketHeader.HeaderSize) || (packetSize > PacketBase.MaxPacketSize))
                 {
                     Log.Error($"Invalid packet size - Id:{_id}, {nameof(packetSize)}:{packetSize}");
                     return false;

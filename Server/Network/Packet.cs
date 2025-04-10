@@ -15,25 +15,26 @@ namespace Server
     }
 
 
-    public class Packet
+    public abstract class PacketBase
     {
         public static readonly int MaxPacketSize = 8192;
-    }
-
-
-    public class SendPacket : IResettable
-    {
-        public byte[] Buffer => _buffer;
-        private readonly byte[] _buffer = new byte[GlobalConstants.MaxPacketSize];
 
         public int PacketSize => _packetSize;
-        private int _packetSize;
+        protected int _packetSize;
 
 
         public void SetPacketSize(int packetSize)
         {
             _packetSize = packetSize;
         }
+    }
+
+
+    public class SendPacket : PacketBase, IResettable
+    {
+        public byte[] Buffer => _buffer;
+        private readonly byte[] _buffer = new byte[GlobalConstants.MaxPacketSize];
+
 
         public void Reset()
         {
