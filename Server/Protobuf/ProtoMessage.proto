@@ -1,0 +1,14 @@
+
+syntax = "proto3";
+
+enum PacketCommand
+{
+	CS_ENTER_ROOM_REQUEST = 1;
+	CS_ENTER_ROOM_OK = 2;
+	CS_ENTER_ROOM_FAIL = 3;
+}
+
+message CsEnterRoomRequest
+{
+
+}
