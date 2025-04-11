@@ -75,7 +75,7 @@ namespace Server
             else
             {
                 var session = new ClientSession(e.AcceptSocket);
-                ClientSessionManager.Instance.AddSession(in session);
+                ClientSessionManager.Instance.AddSession(session);
 
                 session.StartReceive();
             }

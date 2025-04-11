@@ -21,11 +21,10 @@ namespace Server
             foreach (var command in EnumCache<PacketCommand>.Values)
             {
                 var commandString = command.ToString();
-                if (commandString.EndsWith("REQUEST") == false)
+                if (commandString.EndsWith("Request") == false)
                     continue;
 
-                var formattedCommand = textInfo.ToTitleCase(commandString.ToLower()).Replace("_", "");
-                requestCommands[formattedCommand] = command;
+                requestCommands[commandString] = command;
             }
 
             var temp = new Dictionary<PacketCommand, Type>();

@@ -15,7 +15,7 @@ namespace Server
         private readonly object _lock = new();
 
 
-        public void AddSession(in ClientSession session)
+        public void AddSession(ClientSession session)
         {
             Monitor.Enter(_lock);
             _sessions[session.Id] = session;

@@ -1,14 +1,72 @@
 
 syntax = "proto3";
 
+
 enum PacketCommand
 {
-	CS_ENTER_ROOM_REQUEST = 1;
-	CS_ENTER_ROOM_OK = 2;
-	CS_ENTER_ROOM_FAIL = 3;
+	CsCreateChatRoomRequest = 1;
+	CsCreateChatRoomSuccess = 2;
+	CsCreateChatRoomFailure = 3;
+
+	CsJoinChatRoomRequest = 4;
+	CsJoinChatRoomSuccess = 5;
+	CsJoinChatRoomFailure = 6;
+
+	CsLeaveChatRoomRequest = 7;
+	CsLeaveChatRoomSuccess = 8;
+	CsLeaveChatRoomFailure = 9;
 }
 
-message CsEnterRoomRequest
+
+enum ServerErrorCode
 {
+	NONE = 1;
 
+	//유저가 이미 채팅 방에 참가 중인 경우
+	AlreadyInChatRoom = 2;
+
+	//생성하고자 하는 채팅 방 아이디가 이미 사용되고 있는 경우
+	RoomIdAlreadyExists = 3;
+
+	//채팅 방 조회에 실패한 경우
+	ChatRoomNotFound = 4;
+
+	//채팅 방 입장에 실패한 경우
+	ChatRoomJoinFailed = 5;
+
+	//참가 중인 채팅 방이 없는 경우
+	JoinedChatRoomNotFound = 6;
 }
+
+
+message CsCommonFailure
+{
+	ServerErrorCode errorCode = 1;
+}
+
+
+message CsCreateChatRoomRequest
+{
+	string title = 1;
+}
+
+message CsCreateChatRoomSuccess
+{ }
+
+
+message CsJoinChatRoomRequest
+{
+	int32 roomId = 1;
+}
+
+message CsJoinChatRoomSuccess
+{ }
+
+
+message CsLeaveChatRoomRequest
+{
+	int32 roomId = 1;
+}
+
+message CsLeaveChatRoomSuccess
+{ }

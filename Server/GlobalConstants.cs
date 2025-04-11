@@ -9,6 +9,13 @@ namespace Server
 {
     public static class GlobalConstants
     {
+        public static class ChatRoom
+        {
+            public static readonly int MaxChatRoomGroupCount = 10;
+
+            public static readonly int MaxChatRoomCountByGroup = 128;
+        }
+
         public static class Network
         {
             public static readonly int MaxPacketSize = 8192;

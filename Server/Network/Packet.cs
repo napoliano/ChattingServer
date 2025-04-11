@@ -9,19 +9,13 @@ using System.Runtime.InteropServices;
 namespace Server
 {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public readonly struct PacketHeader
+    public readonly struct PacketHeader(short size, short command)
     {
         public static int HeaderSize { get; } = Marshal.SizeOf(typeof(PacketHeader));
 
-        public short Size { get; }
-        
-        public short Command { get; }
+        public short Size { get; } = size;
 
-        public PacketHeader(short size, short command)
-        {
-            Size = size;
-            Command = command;
-        }
+        public short Command { get; } = command;
     }
 
 

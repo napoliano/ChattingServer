@@ -7,7 +7,74 @@
 #region Designer generated code
 #pragma warning disable CS0612, CS0618, CS1591, CS3021, CS8981, IDE0079, IDE1006, RCS1036, RCS1057, RCS1085, RCS1192
 [global::ProtoBuf.ProtoContract()]
-public partial class CsEnterRoomRequest : global::ProtoBuf.IExtensible
+public partial class CsCommonFailure : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+    [global::ProtoBuf.ProtoMember(1)]
+    public ServerErrorCode errorCode { get; set; }
+
+}
+
+[global::ProtoBuf.ProtoContract()]
+public partial class CsCreateChatRoomRequest : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+    [global::ProtoBuf.ProtoMember(1)]
+    [global::System.ComponentModel.DefaultValue("")]
+    public string title { get; set; } = "";
+
+}
+
+[global::ProtoBuf.ProtoContract()]
+public partial class CsCreateChatRoomSuccess : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+}
+
+[global::ProtoBuf.ProtoContract()]
+public partial class CsJoinChatRoomRequest : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+    [global::ProtoBuf.ProtoMember(1)]
+    public int roomId { get; set; }
+
+}
+
+[global::ProtoBuf.ProtoContract()]
+public partial class CsJoinChatRoomSuccess : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+}
+
+[global::ProtoBuf.ProtoContract()]
+public partial class CsLeaveChatRoomRequest : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+    [global::ProtoBuf.ProtoMember(1)]
+    public int roomId { get; set; }
+
+}
+
+[global::ProtoBuf.ProtoContract()]
+public partial class CsLeaveChatRoomSuccess : global::ProtoBuf.IExtensible
 {
     private global::ProtoBuf.IExtension __pbn__extensionData;
     global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -18,9 +85,26 @@ public partial class CsEnterRoomRequest : global::ProtoBuf.IExtensible
 [global::ProtoBuf.ProtoContract()]
 public enum PacketCommand
 {
-    CS_ENTER_ROOM_REQUEST = 1,
-    CS_ENTER_ROOM_OK = 2,
-    CS_ENTER_ROOM_FAIL = 3,
+    CsCreateChatRoomRequest = 1,
+    CsCreateChatRoomSuccess = 2,
+    CsCreateChatRoomFailure = 3,
+    CsJoinChatRoomRequest = 4,
+    CsJoinChatRoomSuccess = 5,
+    CsJoinChatRoomFailure = 6,
+    CsLeaveChatRoomRequest = 7,
+    CsLeaveChatRoomSuccess = 8,
+    CsLeaveChatRoomFailure = 9,
+}
+
+[global::ProtoBuf.ProtoContract()]
+public enum ServerErrorCode
+{
+    NONE = 1,
+    AlreadyInChatRoom = 2,
+    RoomIdAlreadyExists = 3,
+    ChatRoomNotFound = 4,
+    ChatRoomJoinFailed = 5,
+    JoinedChatRoomNotFound = 6,
 }
 
 #pragma warning restore CS0612, CS0618, CS1591, CS3021, CS8981, IDE0079, IDE1006, RCS1036, RCS1057, RCS1085, RCS1192
