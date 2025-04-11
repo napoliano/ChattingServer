@@ -5,7 +5,8 @@
 - EAP 기반의 네트워크 코어
 - Protobuf 사용(protobuf-net)
 - POH 영역 및 Object pool 활용
-- 순차적 이벤트 처리를 위한 Channel 활용
+- 순차적 처리를 위한 Channel 활용
+- Frozen container 사용
 - 
 ---
 
