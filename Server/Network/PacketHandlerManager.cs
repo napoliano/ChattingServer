@@ -19,7 +19,7 @@ namespace Server
             var methods = typeof(PacketHandler).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(m => m.Name.StartsWith(GlobalConstants.Network.PacketHandlerPrefix));
             foreach (var method in methods)
             {
-                string subMethodName = method.Name[GlobalConstants.Network.PacketHandlerPrefix.Length..];
+                string subMethodName = GlobalConstants.Network.ProtoMessagePrefix + method.Name[GlobalConstants.Network.PacketHandlerPrefix.Length..];
                 if (Enum.TryParse(subMethodName, out PacketCommand command) == false)
                     continue;
 

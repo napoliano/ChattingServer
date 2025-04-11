@@ -10,10 +10,9 @@ namespace Server
     public class ChatRoom
     {
         private readonly string _title;
+        private static readonly string s_systemName = "System";
 
         private readonly Dictionary<int, IParticipant> _participants = new();
-
-        private static readonly string _systemName = "System";
 
 
         public ChatRoom(string title)
@@ -26,10 +25,10 @@ namespace Server
             if (_participants.ContainsKey(participant.Id))
                 return false;
 
-            _participants[participant.Id] = participant;
-
             //입장 메시지
-            Broadcast(new ChatMessage(_systemName, $"{participant.Name} participated in the chat room"));
+            Broadcast(new ChatMessage(s_systemName, $"{participant.Name} participated in the chat room"));
+
+            _participants[participant.Id] = participant;
 
             return true;
         }
@@ -39,7 +38,12 @@ namespace Server
             _participants.Remove(participant.Id);
 
             //퇴장 메시지
-            Broadcast(new ChatMessage(_systemName, $"{participant.Name} left the chat room"));
+            Broadcast(new ChatMessage(s_systemName, $"{participant.Name} left the chat room"));
+        }
+
+        public int GetParticipantCount()
+        {
+            return _participants.Count;
         }
 
         public void Broadcast(ChatMessage chatMessage)

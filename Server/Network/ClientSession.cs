@@ -18,6 +18,9 @@ namespace Server
         public int Id => _id;
         private readonly int _id;
 
+        public User User => _user;
+        private readonly User _user;
+
         private readonly Socket _socket;
 
         private readonly SocketAsyncEventArgsEx _receiveEventArgsEx;
@@ -30,9 +33,11 @@ namespace Server
         private int _sessionState = GlobalConstants.SessionState.Connected;
 
 
-        public ClientSession(in Socket socket)
+        public ClientSession(Socket socket)
         {
             _id = Interlocked.Increment(ref s_id);
+
+            _user = new User(this);
 
             _socket = socket;
 
