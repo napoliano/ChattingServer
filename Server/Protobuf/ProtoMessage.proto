@@ -60,7 +60,9 @@ message CsJoinChatRoomRequest
 }
 
 message CsJoinChatRoomSuccess
-{ }
+{ 
+	repeated string participantNames = 1;
+}
 
 
 message CsLeaveChatRoomRequest

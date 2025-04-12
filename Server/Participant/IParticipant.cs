@@ -13,6 +13,8 @@ namespace Server
 
         string Name { get; }
 
+        bool IsUser { get; }
+
         void ReceiveMessage(ChatMessage chatMessage);
     }
 }

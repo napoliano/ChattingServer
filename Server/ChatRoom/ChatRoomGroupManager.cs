@@ -11,7 +11,7 @@ namespace Server
 {
     public class ChatRoomGroupManager : Singleton<ChatRoomGroupManager>
     {
-        private static int s_newRoomId;
+        private static int NewRoomId;
 
         private FrozenDictionary<int, ChatRoomGroup> _chatRoomGroups;
         private int _groupCount;
@@ -23,10 +23,10 @@ namespace Server
 
             for (int i = 0; i < groupCount; i++)
             {
-                chatRoomGroups[i] = new();
+                chatRoomGroups[i] = new(i);
             }
 
-            _chatRoomGroups = _chatRoomGroups.ToFrozenDictionary();
+            _chatRoomGroups = chatRoomGroups.ToFrozenDictionary();
             _groupCount = groupCount;
         }
 
@@ -37,7 +37,7 @@ namespace Server
 
         public int GetNewRoomId()
         {
-            int newRoomId = Interlocked.Increment(ref s_newRoomId);
+            int newRoomId = Interlocked.Increment(ref NewRoomId);
             return newRoomId;
         }
     }

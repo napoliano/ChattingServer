@@ -9,8 +9,10 @@ namespace Server
 {
     public class ChatRoom
     {
+        public string Title => _title;
         private readonly string _title;
-        private static readonly string s_systemName = "System";
+
+        private static readonly string SystemName = "System";
 
         private readonly Dictionary<int, IParticipant> _participants = new();
 
@@ -20,38 +22,83 @@ namespace Server
             _title = title;
         }
 
+        /// <summary>
+        /// 채팅 방 입장
+        /// </summary>
         public bool Join(IParticipant participant)
         {
             if (_participants.ContainsKey(participant.Id))
                 return false;
 
             //입장 메시지
-            Broadcast(new ChatMessage(s_systemName, $"{participant.Name} participated in the chat room"));
+            BroadcastSystemMessage($"{participant.Name} participated in the chat room");
 
             _participants[participant.Id] = participant;
 
             return true;
         }
 
+        /// <summary>
+        /// 채팅 방 퇴장
+        /// </summary>
         public void Leave(IParticipant participant)
         {
-            _participants.Remove(participant.Id);
-
-            //퇴장 메시지
-            Broadcast(new ChatMessage(s_systemName, $"{participant.Name} left the chat room"));
+            if (_participants.Remove(participant.Id))
+            {
+                //퇴장 메시지
+                BroadcastSystemMessage($"{participant.Name} left the chat room");
+            }
         }
 
-        public int GetParticipantCount()
-        {
-            return _participants.Count;
-        }
-
+        /// <summary>
+        /// 모든 참가자 대상으로 메시지 전달
+        /// </summary>
         public void Broadcast(ChatMessage chatMessage)
         {
             foreach (var participant in _participants.Values)
             {
                 participant.ReceiveMessage(chatMessage);
             }
+        }
+
+        /// <summary>
+        /// 모든 참가자 대상으로 시스템 메시지 전달
+        /// </summary>
+        private void BroadcastSystemMessage(string message)
+        {
+            Broadcast(new ChatMessage(SystemName, message));
+        }
+
+        /// <summary>
+        /// 유저 수 반환
+        /// </summary>
+        public int GetUserCount()
+        {
+            return _participants.Values.Count(p => p.IsUser);
+        }
+
+        /// <summary>
+        /// 채팅 방에 유저가 비어있는지 여부 반환
+        /// </summary>
+        public bool IsEmpty()
+        {
+            return GetUserCount() == 0;
+        }
+
+        /// <summary>
+        /// 모든 유저들의 이름 반환
+        /// </summary>
+        public List<string> GetUserNameList()
+        {
+            var names = new List<string>();
+
+            foreach (var participants in _participants.Values)
+            {
+                if (participants.IsUser)
+                    names.Add(participants.Name);
+            }
+
+            return names;
         }
     }
 }

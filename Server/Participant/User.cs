@@ -14,6 +14,8 @@ namespace Server
 
         public string Name => $"Guest_{Id}";
 
+        public bool IsUser => true;
+
         private readonly ClientSession _session;
 
         private int _roomId;
@@ -29,75 +31,77 @@ namespace Server
             //...
         }
 
-        public void CreateChatRoom(string title)
+        public async Task CreateChatRoomAysnc(string title)
         {
+            //이미 참여 중인 채팅 방이 있는 경우
             if (_roomId != 0)
             {
+                Log.Error($"Already joined in the chat room - Id:{Id}, roomId:{_roomId}");
                 _session.SendResponse(PacketCommand.CsCreateChatRoomFailure, new CsCommonFailure() { errorCode = ServerErrorCode.AlreadyInChatRoom });
                 return;
             }
 
             int roomId = ChatRoomGroupManager.Instance.GetNewRoomId();
             var chatRoomGroup = ChatRoomGroupManager.Instance.GetChatRoomGroup(roomId);
-
-            chatRoomGroup.CreateChatRoom(roomId, title, (success, errorCode) =>
+            
+            var (success, errorCode) = await chatRoomGroup.CreateChatRoomAsync(roomId, title);
+            if (success)
             {
-                if (success)
-                {
-                    _roomId = roomId;
-                    _session.SendResponse(PacketCommand.CsCreateChatRoomSuccess, new CsCreateChatRoomSuccess());
-                }
-                else
-                {
-                    _session.SendResponse(PacketCommand.CsCreateChatRoomFailure, new CsCommonFailure() { errorCode = errorCode });
-                }
-            });
+                _roomId = roomId;
+                _session.SendResponse(PacketCommand.CsCreateChatRoomSuccess, new CsCreateChatRoomSuccess());
+            }
+            else
+            {
+                _session.SendResponse(PacketCommand.CsCreateChatRoomFailure, new CsCommonFailure() { errorCode = errorCode });
+            }
         }
 
-        public void JoinChatRoom(int roomId)
+        public async Task JoinChatRoomAysnc(int roomId)
         {
+            //이미 참여 중인 채팅 방이 있는 경우
             if (_roomId != 0)
             {
+                Log.Error($"Already joined in the chat room - Id:{Id}, roomId:{_roomId}");
                 _session.SendResponse(PacketCommand.CsJoinChatRoomFailure, new CsCommonFailure() { errorCode = ServerErrorCode.AlreadyInChatRoom });
                 return;
             }
 
             var chatRoomGroup = ChatRoomGroupManager.Instance.GetChatRoomGroup(roomId);
-            chatRoomGroup.JoinChatRoom(roomId, this, (success, errorCode) =>
+
+            var (success, errorCode) = await chatRoomGroup.JoinChatRoomAsync(roomId, this);
+            if (success)
             {
-                if (success)
-                {
-                    _roomId = roomId;
-                    _session.SendResponse(PacketCommand.CsJoinChatRoomSuccess, new CsJoinChatRoomSuccess());
-                }
-                else
-                {
-                    _session.SendResponse(PacketCommand.CsJoinChatRoomFailure, new CsCommonFailure() { errorCode = errorCode });
-                }
-            });
+                _roomId = roomId;
+                _session.SendResponse(PacketCommand.CsJoinChatRoomSuccess, new CsJoinChatRoomSuccess());
+            }
+            else
+            {
+                _session.SendResponse(PacketCommand.CsJoinChatRoomFailure, new CsCommonFailure() { errorCode = errorCode });
+            }
         }
 
-        public void LeaveChatRoom()
+        public async Task LeaveChatRoomAysnc()
         {
+            //참여 중인 채팅 방이 없는 경우
             if (_roomId == 0)
             {
+                Log.Error($"Not in any chat room - Id:{Id}");
                 _session.SendResponse(PacketCommand.CsLeaveChatRoomFailure, new CsCommonFailure() { errorCode = ServerErrorCode.JoinedChatRoomNotFound });
                 return;
             }
 
             var chatRoomGroup = ChatRoomGroupManager.Instance.GetChatRoomGroup(_roomId);
-            chatRoomGroup.LeaveChatRoom(_roomId, this, (success, errorCode) =>
+
+            var(success, errorCode) = await chatRoomGroup.LeaveChatRoomAsync(_roomId, this);
+            if (success)
             {
-                if (success)
-                {
-                    _roomId = 0;
-                    _session.SendResponse(PacketCommand.CsLeaveChatRoomSuccess, new CsLeaveChatRoomSuccess());
-                }
-                else
-                {
-                    _session.SendResponse(PacketCommand.CsLeaveChatRoomFailure, new CsCommonFailure() { errorCode = errorCode });
-                }
-            });
+                _roomId = 0;
+                _session.SendResponse(PacketCommand.CsLeaveChatRoomSuccess, new CsLeaveChatRoomSuccess());
+            }
+            else
+            {
+                _session.SendResponse(PacketCommand.CsLeaveChatRoomFailure, new CsCommonFailure() { errorCode = errorCode });
+            }
         }
     }
 }

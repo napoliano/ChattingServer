@@ -27,8 +27,8 @@ namespace Server
         private readonly SocketAsyncEventArgsEx _sendEventArgsEx;
 
         private readonly Queue<SendPacket> _sendQueue = new();
-        private readonly Channel<Action> _eventChannel = Channel.CreateUnbounded<Action>();
-        private readonly CancellationTokenSource _cancellationToken = new();
+        private readonly Channel<Func<Task>> _channel = Channel.CreateUnbounded<Func<Task>>();
+        private readonly CancellationTokenSource _cts = new();
 
         private int _sessionState = GlobalConstants.SessionState.Connected;
 
@@ -52,6 +52,25 @@ namespace Server
 
             _ = RunEventLoopAsync();
         }
+
+        private async Task RunEventLoopAsync()
+        {
+            try
+            {
+                await foreach (var func in _channel.Reader.ReadAllAsync(_cts.Token))
+                {
+                    await func();
+                }
+            }
+            catch (OperationCanceledException)
+            { }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"RunEventLoopAsync failed - Id:{_id}");
+                CloseSession();
+            }
+        }
+
 
         public void StartReceive()
         {
@@ -156,9 +175,12 @@ namespace Server
             try
             {
                 using var stream = new MemoryStream(buffer, offset, packetSize);
-                var message = ProtoBuf.Serializer.Deserialize(type, stream);
+                var message = Serializer.Deserialize(type, stream);
 
-                PacketHandlerManager.Instance.Handle(command, this, message);
+                _channel.Writer.TryWrite(async () => 
+                {
+                    await PacketHandlerManager.Instance.HandleAsync(command, this, message);
+                });
             }
             catch (Exception ex)
             {
@@ -176,13 +198,15 @@ namespace Server
 
             var packet = PacketSerializer.MakeSendPacket(command, message);
 
-            _eventChannel.Writer.TryWrite(() =>
+            _channel.Writer.TryWrite(async () =>
             {
                 bool isEmpty = _sendQueue.Count == 0;
                 _sendQueue.Enqueue(packet);
 
                 if (isEmpty)
                     StartSend(_sendEventArgsEx.SAEA);
+
+                await Task.CompletedTask;
             });
         }
 
@@ -196,7 +220,13 @@ namespace Server
                 e.SetBuffer(0, packet.PacketSize);
 
                 if (_socket.SendAsync(e) == false)
-                    _eventChannel.Writer.TryWrite(() => ProcessSend(e));
+                {
+                    _channel.Writer.TryWrite(async () =>
+                    {
+                        ProcessSend(e);
+                        await Task.CompletedTask;
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -207,7 +237,11 @@ namespace Server
 
         private void OnSendCompleted(object? sender, SocketAsyncEventArgs e)
         {
-            _eventChannel.Writer.TryWrite(() => ProcessSend(e));
+            _channel.Writer.TryWrite(async () =>
+            {
+                ProcessSend(e);
+                await Task.CompletedTask;
+            });
         }
 
         private void ProcessSend(SocketAsyncEventArgs e)
@@ -251,20 +285,6 @@ namespace Server
             }
         }
 
-        private async Task RunEventLoopAsync()
-        {
-            try
-            {
-                await foreach (var action in _eventChannel.Reader.ReadAllAsync(_cancellationToken.Token))
-                    action?.Invoke();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"RunEventLoopAsync failed - Id:{_id}");
-                CloseSession();
-            }
-        }
-
         public void CloseSession()
         {
             _sessionState = Interlocked.Exchange(ref _sessionState, GlobalConstants.SessionState.Disconnected);
@@ -272,8 +292,8 @@ namespace Server
                 return;
 
             //채널 및 이벤트 루프 종료
-            _eventChannel.Writer.Complete();
-            _cancellationToken.Cancel();
+            _channel.Writer.Complete();
+            _cts.Cancel();
 
             ClientSessionManager.Instance.TryRemoveSession(_id);
 
@@ -285,8 +305,7 @@ namespace Server
 
                 try
                 {
-                    if (_socket.Connected)
-                        _socket.Shutdown(SocketShutdown.Both);
+                    _socket.Shutdown(SocketShutdown.Both);
                 }
                 catch (Exception ex)
                 {

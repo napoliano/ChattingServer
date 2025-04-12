@@ -59,6 +59,9 @@ public partial class CsJoinChatRoomSuccess : global::ProtoBuf.IExtensible
     global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
         => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
+    [global::ProtoBuf.ProtoMember(1)]
+    public global::System.Collections.Generic.List<string> participantNames { get; } = new global::System.Collections.Generic.List<string>();
+
 }
 
 [global::ProtoBuf.ProtoContract()]
