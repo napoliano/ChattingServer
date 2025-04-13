@@ -9,6 +9,8 @@
 - Frozen container 사용
 - 
 ---
+### 2025-04-12
+ - 패킷 핸들 및 채팅 로직 비동기 처리
 
 ### 2025-04-11
 - ChatRoom을 grouping한 ChatRoomGroup 구현
