@@ -18,6 +18,8 @@ namespace Server
 
             PacketHandlerManager.Instance.Initialize();
 
+            ChatRoomGroupManager.Instance.Initialize();
+
 
             if (_listenSocket.Start(7001) == false)
             {

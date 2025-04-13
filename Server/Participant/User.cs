@@ -103,5 +103,28 @@ namespace Server
                 _session.SendResponse(PacketCommand.CsLeaveChatRoomFailure, new CsCommonFailure() { errorCode = errorCode });
             }
         }
+
+        public async Task BroadcastChatMessageAysnc(ChatMessage chatMessage)
+        {
+            //참여 중인 채팅 방이 없는 경우
+            if (_roomId == 0)
+            {
+                Log.Error($"Not in any chat room - Id:{Id}");
+                _session.SendResponse(PacketCommand.CsBroadcastChatMessageFailure, new CsCommonFailure() { errorCode = ServerErrorCode.JoinedChatRoomNotFound });
+                return;
+            }
+
+            var chatRoomGroup = ChatRoomGroupManager.Instance.GetChatRoomGroup(_roomId);
+
+            var (success, errorCode) = await chatRoomGroup.BroadcastMessageAsync(_roomId, chatMessage);
+            if (success)
+            {
+                _session.SendResponse(PacketCommand.CsBroadcastChatMessageSuccess, new CsLeaveChatRoomSuccess());
+            }
+            else
+            {
+                _session.SendResponse(PacketCommand.CsBroadcastChatMessageFailure, new CsCommonFailure() { errorCode = errorCode });
+            }
+        }
     }
 }

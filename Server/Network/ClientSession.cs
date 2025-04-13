@@ -27,8 +27,12 @@ namespace Server
         private readonly SocketAsyncEventArgsEx _sendEventArgsEx;
 
         private readonly Queue<SendPacket> _sendQueue = new();
-        private readonly Channel<Func<Task>> _channel = Channel.CreateUnbounded<Func<Task>>();
         private readonly CancellationTokenSource _cts = new();
+        private readonly Channel<Func<Task>> _channel = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = false
+        }); 
 
         private int _sessionState = GlobalConstants.SessionState.Connected;
 

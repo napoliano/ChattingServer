@@ -86,6 +86,40 @@ public partial class CsLeaveChatRoomSuccess : global::ProtoBuf.IExtensible
 }
 
 [global::ProtoBuf.ProtoContract()]
+public partial class CsBroadcastChatMessageRequest : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+    [global::ProtoBuf.ProtoMember(1)]
+    public int roomId { get; set; }
+
+    [global::ProtoBuf.ProtoMember(2)]
+    [global::System.ComponentModel.DefaultValue("")]
+    public string message { get; set; } = "";
+
+}
+
+[global::ProtoBuf.ProtoContract()]
+public partial class CsBroadcastChatMessageSuccess : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+}
+
+[global::ProtoBuf.ProtoContract()]
+public partial class CsBroadcastChatMessageNotify : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+}
+
+[global::ProtoBuf.ProtoContract()]
 public enum PacketCommand
 {
     CsCreateChatRoomRequest = 1,
@@ -97,12 +131,16 @@ public enum PacketCommand
     CsLeaveChatRoomRequest = 7,
     CsLeaveChatRoomSuccess = 8,
     CsLeaveChatRoomFailure = 9,
+    CsBroadcastChatMessageRequest = 10,
+    CsBroadcastChatMessageSuccess = 11,
+    CsBroadcastChatMessageFailure = 12,
+    CsBroadcastChatMessageNotify = 13,
 }
 
 [global::ProtoBuf.ProtoContract()]
 public enum ServerErrorCode
 {
-    NONE = 1,
+    None = 1,
     AlreadyInChatRoom = 2,
     RoomIdAlreadyExists = 3,
     ChatRoomNotFound = 4,

@@ -11,28 +11,26 @@ namespace Server
 {
     public class ChatRoomGroupManager : Singleton<ChatRoomGroupManager>
     {
+        private FrozenDictionary<int, ChatRoomGroup> _chatRoomGroups;
+
         private static int NewRoomId;
 
-        private FrozenDictionary<int, ChatRoomGroup> _chatRoomGroups;
-        private int _groupCount;
 
-
-        public void Initialize(int groupCount)
+        public void Initialize()
         {
             var chatRoomGroups = new Dictionary<int, ChatRoomGroup>();
 
-            for (int i = 0; i < groupCount; i++)
+            for (int i = 0; i < GlobalConstants.ChatRoom.MaxChatRoomGroupCount; i++)
             {
                 chatRoomGroups[i] = new(i);
             }
 
             _chatRoomGroups = chatRoomGroups.ToFrozenDictionary();
-            _groupCount = groupCount;
         }
 
         public ChatRoomGroup GetChatRoomGroup(int roomId)
         {
-            return _chatRoomGroups[roomId % _groupCount];
+            return _chatRoomGroups[roomId % GlobalConstants.ChatRoom.MaxChatRoomGroupCount];
         }
 
         public int GetNewRoomId()

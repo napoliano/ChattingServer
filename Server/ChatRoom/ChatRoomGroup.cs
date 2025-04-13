@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.Design.Serialization;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 
 namespace Server
@@ -16,10 +14,11 @@ namespace Server
 
         private readonly Dictionary<int, ChatRoom> _chatRooms = new();
 
+        private readonly Task _eventLoopTask;
         private readonly CancellationTokenSource _cts = new();
         private readonly Channel<IChannelJob> _channel = Channel.CreateUnbounded<IChannelJob>(new UnboundedChannelOptions
         {
-            SingleReader = true,
+            SingleReader = true, 
             SingleWriter = false
         });
 
@@ -28,7 +27,7 @@ namespace Server
         {
             _groupId = groupId;
 
-            _ = RunEventLoopAsync();
+            _eventLoopTask = RunEventLoopAsync();
         }
 
         private async Task RunEventLoopAsync()
@@ -40,67 +39,90 @@ namespace Server
                     await job.ExecuteAsync();
                 }
             }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                Log.Error(ex, $"RunEventLoopAsync failed - groupId:{_groupId}");
+                Log.Error(ex, $"RunEventLoopAsync failed - groupId:{_groupId}, restarting loop");
             }
         }
 
 
-        public Task<(bool Success, ServerErrorCode Error)> CreateChatRoomAsync(int roomId, string title)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private Task<T> TryWriteChannel<T>(Func<Task<T>> func)
         {
-            var tcs = new TaskCompletionSource<(bool, ServerErrorCode)>();
-
-            _channel.Writer.TryWrite(new ChannelJob<(bool, ServerErrorCode)>(() =>
-            {
-                if (_chatRooms.ContainsKey(roomId) == false)
-                {
-                    _chatRooms[roomId] = new ChatRoom(title);
-                    return Task.FromResult((true, ServerErrorCode.NONE));
-                }
-
-                return Task.FromResult((false, ServerErrorCode.RoomIdAlreadyExists));
-            }, tcs));
-
+            var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _channel.Writer.TryWrite(new ChannelJob<T>(func, tcs));
             return tcs.Task;
         }
 
-        public Task<(bool Success, ServerErrorCode Error)> JoinChatRoomAsync(int roomId, IParticipant participant)
+        /// <summary>
+        /// 채팅 방 생성
+        /// </summary>
+        public Task<(bool success, ServerErrorCode errorCode)> CreateChatRoomAsync(int roomId, string title)
         {
-            var tcs = new TaskCompletionSource<(bool, ServerErrorCode)>();
-
-            _channel.Writer.TryWrite(new ChannelJob<(bool, ServerErrorCode)>(() =>
+            return TryWriteChannel(() =>
             {
+                //roomId가 중복된 경우
+                if (_chatRooms.ContainsKey(roomId))
+                    return Task.FromResult((false, ServerErrorCode.RoomIdAlreadyExists));
+
+                _chatRooms[roomId] = new ChatRoom(title);
+                return Task.FromResult((true, ServerErrorCode.None));
+            });
+        }
+
+        /// <summary>
+        /// 채팅 방 입장
+        /// </summary>
+        public Task<(bool success, ServerErrorCode errorCode)> JoinChatRoomAsync(int roomId, IParticipant participant)
+        {
+            return TryWriteChannel(() =>
+            {
+                //roomId에 매칭되는 채팅 방이 없는 경우
                 if (_chatRooms.TryGetValue(roomId, out var chatRoom) == false)
                     return Task.FromResult((false, ServerErrorCode.ChatRoomNotFound));
 
-                if (chatRoom.Join(participant) == false)
-                    return Task.FromResult((false, ServerErrorCode.ChatRoomJoinFailed));
-
-                return Task.FromResult((true, ServerErrorCode.NONE));
-            }, tcs));
-
-            return tcs.Task;
+                var (suceess, errorCode) = chatRoom.Join(participant);
+                return Task.FromResult((suceess, errorCode));
+            });
         }
 
-        public Task<(bool Success, ServerErrorCode Error)> LeaveChatRoomAsync(int roomId, IParticipant participant)
+        /// <summary>
+        /// 채팅 방 퇴장
+        /// </summary>
+        public Task<(bool success, ServerErrorCode errorCode)> LeaveChatRoomAsync(int roomId, IParticipant participant)
         {
-            var tcs = new TaskCompletionSource<(bool, ServerErrorCode)>();
-
-            _channel.Writer.TryWrite(new ChannelJob<(bool, ServerErrorCode)>(() =>
+            return TryWriteChannel(() =>
             {
+                //roomId에 매칭되는 채팅 방이 없는 경우
                 if (_chatRooms.TryGetValue(roomId, out var chatRoom) == false)
                     return Task.FromResult((false, ServerErrorCode.ChatRoomNotFound));
 
                 chatRoom.Leave(participant);
 
+                //채팅 방에 유저가 없으면 채팅 방 제거
                 if (chatRoom.IsEmpty())
                     _chatRooms.Remove(roomId);
 
-                return Task.FromResult((true, ServerErrorCode.NONE));
-            }, tcs));
+                return Task.FromResult((true, ServerErrorCode.None));
+            });
+        }
 
-            return tcs.Task;
+        /// <summary>
+        /// 채팅 메시지 전달
+        /// </summary>
+        public Task<(bool success, ServerErrorCode errorCode)> BroadcastMessageAsync(int roomId, ChatMessage chatMessage)
+        {
+            return TryWriteChannel(() =>
+            {
+                //roomId에 매칭되는 채팅 방이 없는 경우
+                if (_chatRooms.TryGetValue(roomId, out var chatRoom) == false)
+                    return Task.FromResult((false, ServerErrorCode.ChatRoomNotFound));
+
+                chatRoom.Broadcast(chatMessage);
+
+                return Task.FromResult((true, ServerErrorCode.None));
+            });
         }
     }
 }

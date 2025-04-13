@@ -14,6 +14,8 @@ namespace Server
             public static readonly int MaxChatRoomGroupCount = 10;
 
             public static readonly int MaxChatRoomCountByGroup = 128;
+
+            public static readonly string SystemName = "System";
         }
 
         public static class Network

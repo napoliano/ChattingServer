@@ -12,8 +12,6 @@ namespace Server
         public string Title => _title;
         private readonly string _title;
 
-        private static readonly string SystemName = "System";
-
         private readonly Dictionary<int, IParticipant> _participants = new();
 
 
@@ -25,17 +23,18 @@ namespace Server
         /// <summary>
         /// 채팅 방 입장
         /// </summary>
-        public bool Join(IParticipant participant)
+        public (bool success, ServerErrorCode errorCode) Join(IParticipant participant)
         {
+            //이미 참여한 채팅 방인 경우
             if (_participants.ContainsKey(participant.Id))
-                return false;
+                return (false, ServerErrorCode.ChatRoomJoinFailed);
 
-            //입장 메시지
+            //입장 시스템 메시지
             BroadcastSystemMessage($"{participant.Name} participated in the chat room");
 
             _participants[participant.Id] = participant;
 
-            return true;
+            return (false, ServerErrorCode.None);
         }
 
         /// <summary>
@@ -66,7 +65,7 @@ namespace Server
         /// </summary>
         private void BroadcastSystemMessage(string message)
         {
-            Broadcast(new ChatMessage(SystemName, message));
+            Broadcast(new ChatMessage(GlobalConstants.ChatRoom.SystemName, message));
         }
 
         /// <summary>

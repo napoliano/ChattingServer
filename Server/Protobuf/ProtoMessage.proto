@@ -15,12 +15,17 @@ enum PacketCommand
 	CsLeaveChatRoomRequest = 7;
 	CsLeaveChatRoomSuccess = 8;
 	CsLeaveChatRoomFailure = 9;
+
+	CsBroadcastChatMessageRequest = 10;
+	CsBroadcastChatMessageSuccess = 11;
+	CsBroadcastChatMessageFailure = 12;
+	CsBroadcastChatMessageNotify = 13;
 }
 
 
 enum ServerErrorCode
 {
-	NONE = 1;
+	None = 1;
 
 	//유저가 이미 채팅 방에 참가 중인 경우
 	AlreadyInChatRoom = 2;
@@ -72,3 +77,18 @@ message CsLeaveChatRoomRequest
 
 message CsLeaveChatRoomSuccess
 { }
+
+
+message CsBroadcastChatMessageRequest
+{
+	int32 roomId = 1;
+	string message = 2;
+}
+
+message CsBroadcastChatMessageSuccess
+{ }
+
+message CsBroadcastChatMessageNotify
+{
+
+}
