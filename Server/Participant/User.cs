@@ -28,8 +28,9 @@ namespace Server
 
         public void ReceiveMessage(ChatMessage chatMessage)
         {
-            //...
+            _session.SendResponse(PacketCommand.CsBroadcastChatMessageNotify, new CsBroadcastChatMessageNotify());
         }
+
 
         public async Task CreateChatRoomAysnc(string title)
         {
@@ -41,7 +42,7 @@ namespace Server
                 return;
             }
 
-            int roomId = ChatRoomGroupManager.Instance.GetNewRoomId();
+            int roomId = ChatRoomGroupManager.Instance.GetUniqueRoomId();
             var chatRoomGroup = ChatRoomGroupManager.Instance.GetChatRoomGroup(roomId);
             
             var (success, errorCode) = await chatRoomGroup.CreateChatRoomAsync(roomId, title);
@@ -104,7 +105,7 @@ namespace Server
             }
         }
 
-        public async Task BroadcastChatMessageAysnc(ChatMessage chatMessage)
+        public async Task BroadcastChatMessageAysnc(string message)
         {
             //참여 중인 채팅 방이 없는 경우
             if (_roomId == 0)
@@ -113,6 +114,12 @@ namespace Server
                 _session.SendResponse(PacketCommand.CsBroadcastChatMessageFailure, new CsCommonFailure() { errorCode = ServerErrorCode.JoinedChatRoomNotFound });
                 return;
             }
+
+            var chatMessage = new ChatMessage
+            {
+                senderName = Name,
+                message = message
+            };
 
             var chatRoomGroup = ChatRoomGroupManager.Instance.GetChatRoomGroup(_roomId);
 

@@ -79,6 +79,12 @@ message CsLeaveChatRoomSuccess
 { }
 
 
+message ChatMessage
+{
+	string senderName = 1;
+	string message = 2;
+}
+
 message CsBroadcastChatMessageRequest
 {
 	int32 roomId = 1;
@@ -90,5 +96,5 @@ message CsBroadcastChatMessageSuccess
 
 message CsBroadcastChatMessageNotify
 {
-
+	ChatMessage ChatMessage = 1;
 }

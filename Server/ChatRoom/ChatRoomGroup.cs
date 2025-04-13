@@ -39,6 +39,7 @@ namespace Server
                     await job.ExecuteAsync();
                 }
             }
+            //cts가 Cancel된 경우
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
@@ -46,21 +47,21 @@ namespace Server
             }
         }
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private Task<T> TryWriteChannel<T>(Func<Task<T>> func)
+        private Task<T> TryWriteToChannel<T>(Func<Task<T>> func)
         {
             var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
             _channel.Writer.TryWrite(new ChannelJob<T>(func, tcs));
             return tcs.Task;
         }
 
+
         /// <summary>
         /// 채팅 방 생성
         /// </summary>
         public Task<(bool success, ServerErrorCode errorCode)> CreateChatRoomAsync(int roomId, string title)
         {
-            return TryWriteChannel(() =>
+            return TryWriteToChannel(() =>
             {
                 //roomId가 중복된 경우
                 if (_chatRooms.ContainsKey(roomId))
@@ -76,7 +77,7 @@ namespace Server
         /// </summary>
         public Task<(bool success, ServerErrorCode errorCode)> JoinChatRoomAsync(int roomId, IParticipant participant)
         {
-            return TryWriteChannel(() =>
+            return TryWriteToChannel(() =>
             {
                 //roomId에 매칭되는 채팅 방이 없는 경우
                 if (_chatRooms.TryGetValue(roomId, out var chatRoom) == false)
@@ -92,7 +93,7 @@ namespace Server
         /// </summary>
         public Task<(bool success, ServerErrorCode errorCode)> LeaveChatRoomAsync(int roomId, IParticipant participant)
         {
-            return TryWriteChannel(() =>
+            return TryWriteToChannel(() =>
             {
                 //roomId에 매칭되는 채팅 방이 없는 경우
                 if (_chatRooms.TryGetValue(roomId, out var chatRoom) == false)
@@ -113,7 +114,7 @@ namespace Server
         /// </summary>
         public Task<(bool success, ServerErrorCode errorCode)> BroadcastMessageAsync(int roomId, ChatMessage chatMessage)
         {
-            return TryWriteChannel(() =>
+            return TryWriteToChannel(() =>
             {
                 //roomId에 매칭되는 채팅 방이 없는 경우
                 if (_chatRooms.TryGetValue(roomId, out var chatRoom) == false)

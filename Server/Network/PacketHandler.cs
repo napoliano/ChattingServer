@@ -32,5 +32,13 @@ namespace Server
                 await session.User.LeaveChatRoomAysnc();
             }
         }
+
+        private static async Task OnBroadcastChatMessageRequest(ClientSession session, object message)
+        {
+            if (message is CsBroadcastChatMessageRequest request)
+            {
+                await session.User.BroadcastChatMessageAysnc(request.message);
+            }
+        }
     }
 }

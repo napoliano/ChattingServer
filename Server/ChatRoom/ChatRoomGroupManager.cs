@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 
 namespace Server
@@ -13,7 +12,7 @@ namespace Server
     {
         private FrozenDictionary<int, ChatRoomGroup> _chatRoomGroups;
 
-        private static int NewRoomId;
+        private static int UniqueRoomId;
 
 
         public void Initialize()
@@ -33,10 +32,9 @@ namespace Server
             return _chatRoomGroups[roomId % GlobalConstants.ChatRoom.MaxChatRoomGroupCount];
         }
 
-        public int GetNewRoomId()
+        public int GetUniqueRoomId()
         {
-            int newRoomId = Interlocked.Increment(ref NewRoomId);
-            return newRoomId;
+            return Interlocked.Increment(ref UniqueRoomId);
         }
     }
 }

@@ -14,12 +14,7 @@ namespace Server
 
         public bool Start()
         {
-            ProtoMessageTypeManager.Instance.Initialize();
-
-            PacketHandlerManager.Instance.Initialize();
-
-            ChatRoomGroupManager.Instance.Initialize();
-
+            InitializeManager();
 
             if (_listenSocket.Start(7001) == false)
             {
@@ -39,6 +34,15 @@ namespace Server
             }
 
             return true;
+        }
+
+        private void InitializeManager()
+        {
+            ProtoMessageTypeManager.Instance.Initialize();
+
+            PacketHandlerManager.Instance.Initialize();
+
+            ChatRoomGroupManager.Instance.Initialize();
         }
 
         public void Stop()

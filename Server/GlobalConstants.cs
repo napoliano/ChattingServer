@@ -27,6 +27,8 @@ namespace Server
             public static readonly string PacketHandlerPrefix = "On";
 
             public static readonly string ProtoMessagePrefix = "Cs";
+
+            public static readonly int Backlog = 10000;
         }
         
         public static class SessionState

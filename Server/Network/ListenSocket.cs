@@ -20,7 +20,7 @@ namespace Server
                 _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
                 _listenSocket.Bind(new IPEndPoint(IPAddress.Any, port));
-                _listenSocket.Listen();
+                _listenSocket.Listen(GlobalConstants.Network.Backlog);
 
                 _acceptEventArgs.Completed += OnAcceptCompleted;
 
@@ -50,10 +50,8 @@ namespace Server
                 if (_listenSocket.AcceptAsync(e) == false)
                     ProcessAccept(e);
             }
-            catch (ObjectDisposedException)
-            {
-                //소켓이 종료된 상태
-            }
+            //소켓이 dispose된 경우
+            catch (ObjectDisposedException) { }
             catch (Exception ex)
             {
                 Log.Error(ex, $"AcceptAsync failed - SocketError:{e.SocketError}");

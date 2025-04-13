@@ -7,7 +7,7 @@ namespace Server
 {
     public static class PacketSerializer
     {
-        public static SendPacket MakeSendPacket<T>(PacketCommand command, T message) where T : class, IExtensible
+        public static SendPacket MakeSendPacket<T>(PacketCommand command, T message) where T : class
         {
             var packet = ObjectPool<SendPacket>.Rent();
 

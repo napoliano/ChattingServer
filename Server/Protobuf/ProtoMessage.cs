@@ -86,6 +86,23 @@ public partial class CsLeaveChatRoomSuccess : global::ProtoBuf.IExtensible
 }
 
 [global::ProtoBuf.ProtoContract()]
+public partial class ChatMessage : global::ProtoBuf.IExtensible
+{
+    private global::ProtoBuf.IExtension __pbn__extensionData;
+    global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+        => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+    [global::ProtoBuf.ProtoMember(1)]
+    [global::System.ComponentModel.DefaultValue("")]
+    public string senderName { get; set; } = "";
+
+    [global::ProtoBuf.ProtoMember(2)]
+    [global::System.ComponentModel.DefaultValue("")]
+    public string message { get; set; } = "";
+
+}
+
+[global::ProtoBuf.ProtoContract()]
 public partial class CsBroadcastChatMessageRequest : global::ProtoBuf.IExtensible
 {
     private global::ProtoBuf.IExtension __pbn__extensionData;
@@ -116,6 +133,9 @@ public partial class CsBroadcastChatMessageNotify : global::ProtoBuf.IExtensible
     private global::ProtoBuf.IExtension __pbn__extensionData;
     global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
         => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+    [global::ProtoBuf.ProtoMember(1)]
+    public ChatMessage ChatMessage { get; set; }
 
 }
 

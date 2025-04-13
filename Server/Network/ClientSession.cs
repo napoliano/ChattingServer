@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Threading.Channels;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using ProtoBuf;
 
 
@@ -13,7 +14,7 @@ namespace Server
 {
     public class ClientSession
     {
-        private static int s_id;
+        private static int IdCounter;
 
         public int Id => _id;
         private readonly int _id;
@@ -27,6 +28,8 @@ namespace Server
         private readonly SocketAsyncEventArgsEx _sendEventArgsEx;
 
         private readonly Queue<SendPacket> _sendQueue = new();
+
+        private readonly Task _eventLoopTask;
         private readonly CancellationTokenSource _cts = new();
         private readonly Channel<Func<Task>> _channel = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions
         {
@@ -39,7 +42,7 @@ namespace Server
 
         public ClientSession(Socket socket)
         {
-            _id = Interlocked.Increment(ref s_id);
+            _id = Interlocked.Increment(ref IdCounter);
 
             _user = new User(this);
 
@@ -54,7 +57,7 @@ namespace Server
             _sendEventArgsEx.SAEA.SetBuffer(_sendEventArgsEx.Buffer, 0, GlobalConstants.Network.MaxPacketSize);
             _sendEventArgsEx.SAEA.Completed += OnSendCompleted;
 
-            _ = RunEventLoopAsync();
+            _eventLoopTask = RunEventLoopAsync();
         }
 
         private async Task RunEventLoopAsync()
@@ -66,13 +69,19 @@ namespace Server
                     await func();
                 }
             }
-            catch (OperationCanceledException)
-            { }
+            //cts가 Cancel된 경우
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
                 Log.Error(ex, $"RunEventLoopAsync failed - Id:{_id}");
                 CloseSession();
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void TryWriteToChannel(Func<Task> func)
+        {
+            _channel.Writer.TryWrite(func);
         }
 
 
@@ -168,27 +177,27 @@ namespace Server
 
         private bool ProcessPacket(byte[] buffer, int offset, int packetSize)
         {
-            var command = (PacketCommand)MemoryMarshal.Read<short>(buffer.AsSpan(offset + sizeof(short)));
-            var type = ProtoMessageTypeManager.Instance.TryGetType(command);
-            if (type == null)
-            {
-                Log.Error($"Unknown packet command - Id:{_id}, {nameof(command)}:{command}");
-                return false;
-            }
-
             try
             {
+                var command = (PacketCommand)MemoryMarshal.Read<short>(buffer.AsSpan(offset + sizeof(short)));
+                var type = ProtoMessageTypeManager.Instance.TryGetType(command);
+                if (type == null)
+                {
+                    Log.Error($"Unknown packet command - Id:{_id}, {nameof(command)}:{command}");
+                    return false;
+                }
+
                 using var stream = new MemoryStream(buffer, offset, packetSize);
                 var message = Serializer.Deserialize(type, stream);
 
-                _channel.Writer.TryWrite(async () => 
+                TryWriteToChannel(async () => 
                 {
                     await PacketHandlerManager.Instance.HandleAsync(command, this, message);
                 });
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Failed to deserialize packet - Id:{_id}, {nameof(command)}:{command}, {nameof(packetSize)}:{packetSize}");
+                Log.Error(ex, $"Failed to deserialize packet - Id:{_id}, {nameof(packetSize)}:{packetSize}");
                 return false;
             }
 
@@ -202,7 +211,7 @@ namespace Server
 
             var packet = PacketSerializer.MakeSendPacket(command, message);
 
-            _channel.Writer.TryWrite(async () =>
+            TryWriteToChannel(async () =>
             {
                 bool isEmpty = _sendQueue.Count == 0;
                 _sendQueue.Enqueue(packet);
@@ -224,13 +233,7 @@ namespace Server
                 e.SetBuffer(0, packet.PacketSize);
 
                 if (_socket.SendAsync(e) == false)
-                {
-                    _channel.Writer.TryWrite(async () =>
-                    {
-                        ProcessSend(e);
-                        await Task.CompletedTask;
-                    });
-                }
+                    OnSendCompleted(this, e);
             }
             catch (Exception ex)
             {
@@ -241,7 +244,7 @@ namespace Server
 
         private void OnSendCompleted(object? sender, SocketAsyncEventArgs e)
         {
-            _channel.Writer.TryWrite(async () =>
+            TryWriteToChannel(async () =>
             {
                 ProcessSend(e);
                 await Task.CompletedTask;
@@ -301,36 +304,29 @@ namespace Server
 
             ClientSessionManager.Instance.TryRemoveSession(_id);
 
-
-            //자원 정리
-            _ = Task.Run(async () =>
+            try
             {
-                await Task.Delay(GlobalConstants.Time.OneSecondMs);
+                _socket.Shutdown(SocketShutdown.Both);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Failed to shutdown socket of session - Id:{_id}");
+            }
+            finally
+            {
+                _socket.Close();
+            }
 
-                try
-                {
-                    _socket.Shutdown(SocketShutdown.Both);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"Failed to shutdown socket of session - Id:{_id}");
-                }
-                finally
-                {
-                    _socket.Close();
-                }
+            _receiveEventArgsEx.SAEA.Completed -= OnReceiveCompleted;
+            _sendEventArgsEx.SAEA.Completed -= OnSendCompleted;
 
-                _receiveEventArgsEx.SAEA.Completed -= OnReceiveCompleted;
-                _sendEventArgsEx.SAEA.Completed -= OnSendCompleted;
+            ObjectPool<SocketAsyncEventArgsEx>.Return(_receiveEventArgsEx);
+            ObjectPool<SocketAsyncEventArgsEx>.Return(_sendEventArgsEx);
 
-                ObjectPool<SocketAsyncEventArgsEx>.Return(_receiveEventArgsEx);
-                ObjectPool<SocketAsyncEventArgsEx>.Return(_sendEventArgsEx);
-
-                foreach (var sendPacket in _sendQueue)
-                {
-                    ObjectPool<SendPacket>.Return(sendPacket);
-                }
-            });
+            foreach (var sendPacket in _sendQueue)
+            {
+                ObjectPool<SendPacket>.Return(sendPacket);
+            }
         }
     }
 }

@@ -65,7 +65,11 @@ namespace Server
         /// </summary>
         private void BroadcastSystemMessage(string message)
         {
-            Broadcast(new ChatMessage(GlobalConstants.ChatRoom.SystemName, message));
+            Broadcast(new ChatMessage()
+            {
+                senderName = GlobalConstants.ChatRoom.SystemName,
+                message = message
+            });
         }
 
         /// <summary>
