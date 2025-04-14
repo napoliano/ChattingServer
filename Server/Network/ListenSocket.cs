@@ -51,7 +51,10 @@ namespace Server
                     ProcessAccept(e);
             }
             //소켓이 dispose된 경우
-            catch (ObjectDisposedException) { }
+            catch (ObjectDisposedException) 
+            {
+                Log.Debug($"ListenSocket disposed");
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, $"AcceptAsync failed - SocketError:{e.SocketError}");

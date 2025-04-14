@@ -10,27 +10,27 @@ namespace Server
 {
     public class ChatRoomGroup
     {
-        private readonly int _groupId;
-
         private readonly Dictionary<int, ChatRoom> _chatRooms = new();
+
+        private readonly int _groupId;
 
         private readonly Task _eventLoopTask;
         private readonly CancellationTokenSource _cts = new();
-        private readonly Channel<IChannelJob> _channel = Channel.CreateUnbounded<IChannelJob>(new UnboundedChannelOptions
+        private readonly Channel<IChannelItem> _channel = Channel.CreateUnbounded<IChannelItem>(new UnboundedChannelOptions()
         {
             SingleReader = true, 
             SingleWriter = false
         });
 
-
+        
         public ChatRoomGroup(int groupId)
         {
             _groupId = groupId;
 
-            _eventLoopTask = RunEventLoopAsync();
+            _eventLoopTask = ProcessChannelItemAsync();
         }
 
-        private async Task RunEventLoopAsync()
+        private async Task ProcessChannelItemAsync()
         {
             try
             {
@@ -46,7 +46,7 @@ namespace Server
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"RunEventLoopAsync failed - groupId:{_groupId}, restarting loop");
+                Log.Error(ex, $"RunEventLoopAsync failed - groupId:{_groupId}");
             }
         }
 
@@ -54,7 +54,7 @@ namespace Server
         private Task<T> TryWriteToChannel<T>(Func<Task<T>> func)
         {
             var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _channel.Writer.TryWrite(new ChannelJob<T>(func, tcs));
+            _channel.Writer.TryWrite(new ChannelItem<T>(func, tcs));
             return tcs.Task;
         }
 

@@ -7,18 +7,18 @@ using System.Threading.Tasks;
 
 namespace Server
 {
-    public interface IChannelJob
+    public interface IChannelItem
     {
         public Task ExecuteAsync();
     }
 
-    public class ChannelJob<T> : IChannelJob
+    public class ChannelItem<T> : IChannelItem
     {
         private readonly Func<Task<T>> _func;
         private readonly TaskCompletionSource<T> _tcs;
 
 
-        public ChannelJob(Func<Task<T>> func, TaskCompletionSource<T> tcs)
+        public ChannelItem(Func<Task<T>> func, TaskCompletionSource<T> tcs)
         {
             _func = func;
             _tcs = tcs;
