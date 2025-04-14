@@ -5,12 +5,12 @@ using System.Net.Sockets;
 
 namespace Server
 {
-    public class ListenSocket
+    public class ListenSocket : IDisposable
     {
         private readonly Socket _listenSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         private readonly SocketAsyncEventArgs _acceptEventArgs = new();
 
-        private bool _isRunning = true;
+        private bool _disposed = false;
 
 
         public bool Start(int port)
@@ -42,7 +42,7 @@ namespace Server
 
         private void StartAccept(SocketAsyncEventArgs e)
         {
-            if (_isRunning == false)
+            if (_disposed)
                 return;
 
             try
@@ -66,7 +66,7 @@ namespace Server
 
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
-            if (_isRunning == false)
+            if (_disposed)
                 return;
 
             if ((e.SocketError != SocketError.Success) || (e.AcceptSocket == null))
@@ -86,12 +86,18 @@ namespace Server
             StartAccept(e);
         }
 
-        public void Stop()
+        public void Dispose()
         {
-            if (_isRunning == false)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
                 return;
 
-            _isRunning = false;
+            _disposed = true;
 
             try
             {
@@ -104,6 +110,11 @@ namespace Server
 
             _acceptEventArgs.Completed -= OnAcceptCompleted;
             _acceptEventArgs.Dispose();
+        }
+
+        ~ListenSocket()
+        {
+            Dispose(false);
         }
     }
 }

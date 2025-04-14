@@ -47,7 +47,7 @@ namespace Server
 
         public void Stop()
         {
-            _listenSocket.Stop();
+            _listenSocket.Dispose();
         }
     }
 }
