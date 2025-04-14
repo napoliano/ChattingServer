@@ -70,7 +70,10 @@ namespace Server
                 }
             }
             //cts가 Cancel된 경우
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) 
+            {
+                Log.Debug($"RunEventLoopAsync canceled - Id:{_id}");
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, $"RunEventLoopAsync failed - Id:{_id}");

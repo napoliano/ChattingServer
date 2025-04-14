@@ -28,9 +28,11 @@ namespace Server
 
         public void ReceiveMessage(ChatMessage chatMessage)
         {
-            _session.SendResponse(PacketCommand.CsBroadcastChatMessageNotify, new CsBroadcastChatMessageNotify());
+            _session.SendResponse(PacketCommand.CsBroadcastChatMessageNotify, new CsBroadcastChatMessageNotify()
+            {
+                ChatMessage = chatMessage
+            });
         }
-
 
         public async Task CreateChatRoomAysnc(string title)
         {
