@@ -12,6 +12,14 @@ namespace Server
 
         private bool _disposed = false;
 
+        //Accept를 연속으로 재시도한 횟수 관리
+        private RetryThresholdCounter _acceptRetryCounter;
+
+
+        public ListenSocket()
+        {
+            _acceptRetryCounter = new(GlobalConstants.Network.MaxAcceptRetryCount, OnAcceptThresholdExceeded);
+        }
 
         public bool Start(int port)
         {
@@ -28,7 +36,7 @@ namespace Server
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Failed to listen - port:{port}");
+                Log.Error(ex, $"Start failed - port:{port}");
                 return false;
             }
 
@@ -49,19 +57,32 @@ namespace Server
             {
                 if (_listenSocket.AcceptAsync(e) == false)
                     ProcessAccept(e);
+
+                _acceptRetryCounter.Reset();
             }
             //소켓이 dispose된 경우
             catch (ObjectDisposedException) 
             {
-                Log.Debug($"ListenSocket disposed");
+                Log.Debug($"AcceptAsync aborted");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"AcceptAsync failed - SocketError:{e.SocketError}");
+                _acceptRetryCounter.Add();
 
                 //Accept 재시도
                 StartAccept(e);
+
+                Log.Error(ex, $"AcceptAsync failed - socketError:{e.SocketError}, retryCount:{_acceptRetryCounter.RetryCount}");
             }
+        }
+
+        /// <summary>
+        /// Accept를 연달아 실패한 경우 호출
+        /// </summary>
+        private void OnAcceptThresholdExceeded()
+        {
+            //[Todo] 팀 정책에 따라 구현
+            //ex. 서버 종료, 알람 메일 전송 등..
         }
 
         private void ProcessAccept(SocketAsyncEventArgs e)
@@ -71,7 +92,7 @@ namespace Server
 
             if ((e.SocketError != SocketError.Success) || (e.AcceptSocket == null))
             {
-                Log.Error($"Failed to accept client - SocketError:{e.SocketError}");
+                Log.Error($"Client accept failed - socketError:{e.SocketError}");
             }
             else
             {
@@ -105,7 +126,7 @@ namespace Server
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Failed to close socket");
+                Log.Error(ex, $"ListenSocket close failed");
             }
 
             _acceptEventArgs.Completed -= OnAcceptCompleted;
