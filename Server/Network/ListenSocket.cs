@@ -5,7 +5,7 @@ using System.Net.Sockets;
 
 namespace Server
 {
-    public class ListenSocket : IDisposable
+    public class ListenSocket
     {
         private readonly Socket _listenSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         private readonly SocketAsyncEventArgs _acceptEventArgs = new();
@@ -107,39 +107,24 @@ namespace Server
             StartAccept(e);
         }
 
-
         public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
         {
             if (_disposed)
                 return;
 
-            if (disposing)
+            try
             {
-                try
-                {
-                    _listenSocket.Dispose();
+                _listenSocket.Dispose();
 
-                    _acceptEventArgs.Completed -= OnAcceptCompleted;
-                    _acceptEventArgs.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"ListenSocket dispose failed");
-                }
+                _acceptEventArgs.Completed -= OnAcceptCompleted;
+                _acceptEventArgs.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"ListenSocket dispose failed");
             }
 
             _disposed = true;
-        }
-
-        ~ListenSocket()
-        {
-            Dispose(false);
         }
     }
 }

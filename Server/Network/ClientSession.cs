@@ -3,7 +3,6 @@ using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Channels;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
@@ -52,13 +51,6 @@ namespace Server
             _sendEventArgsEx.SAEA.Completed += OnSendCompleted;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void TryWriteToChannel(Func<Task> func)
-        {
-            _channel.TryWrite(new SessionChannelItem(func));
-        }
-
-
         public void StartReceive()
         {
             StartReceive(_receiveEventArgsEx.SAEA);
@@ -69,46 +61,48 @@ namespace Server
             if (_sessionState == GlobalConstants.SessionState.Disconnected)
                 return;
 
+            bool pending = false;
             try
             {
-                if (_socket.ReceiveAsync(e) == false)
-                    ProcessReceive(e);
+                pending = _socket.ReceiveAsync(e);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, $"ReceiveAsync failed - Id:{_id}, SocketError:{e.SocketError}");
                 CloseSession();
             }
+
+            if (pending == false)
+            {
+                OnReceiveCompleted(this, e);
+            }
         }
 
         private void OnReceiveCompleted(object? sender, SocketAsyncEventArgs e)
         {
-            ProcessReceive(e);
+            if (ProcessReceive(e) == false)
+            {
+                if ((e.BytesTransferred > 0) || (e.SocketError != SocketError.Success))
+                    Log.Error($"ProcessReceive failed - Id:{_id}, bytesTransferred:{e.BytesTransferred}, socketError:{e.SocketError}");
+
+                CloseSession();
+            }
         }
 
-        private void ProcessReceive(SocketAsyncEventArgs e)
+        private bool ProcessReceive(SocketAsyncEventArgs e)
         {
-            if (e.BytesTransferred <= 0)
-            {
-                CloseSession();
-                return;
-            }
-
-            if (e.SocketError != SocketError.Success)
-            {
-                Log.Error($"Receive error - Id:{_id}, SocketError:{e.SocketError}");
-                CloseSession();
-                return;
-            }
+            if ((e.BytesTransferred <= 0) || (e.SocketError != SocketError.Success))
+                return false;
 
             if (ParsePacket(e) == false)
             {
                 Log.Error($"ParsePacket failed - Id:{_id}");
-                CloseSession();
-                return;
+                return false;
             }
 
             StartReceive(e);
+
+            return true;
         }
 
         private bool ParsePacket(SocketAsyncEventArgs e)
@@ -124,7 +118,7 @@ namespace Server
                 int packetSize = MemoryMarshal.Read<short>(e.Buffer.AsSpan(parseBytes));
                 if ((packetSize < PacketHeader.HeaderSize) || (packetSize > GlobalConstants.Network.MaxPacketSize))
                 {
-                    Log.Error($"Invalid packet size - Id:{_id}, {nameof(packetSize)}:{packetSize}");
+                    Log.Error($"Invalid packet size - Id:{_id}, packetSize:{packetSize}");
                     return false;
                 }
 
@@ -151,32 +145,34 @@ namespace Server
 
         private bool ProcessPacket(byte[] buffer, int offset, int packetSize)
         {
-            try
+            var command = (PacketCommand)MemoryMarshal.Read<short>(buffer.AsSpan(offset + sizeof(short)));
+            var type = ProtoMessageTypeManager.Instance.TryGetType(command);
+            if (type == null)
             {
-                var command = (PacketCommand)MemoryMarshal.Read<short>(buffer.AsSpan(offset + sizeof(short)));
-                var type = ProtoMessageTypeManager.Instance.TryGetType(command);
-                if (type == null)
-                {
-                    Log.Error($"Unknown packet command - Id:{_id}, {nameof(command)}:{command}");
-                    return false;
-                }
-
-                using var stream = new MemoryStream(buffer, offset, packetSize);
-                var message = Serializer.Deserialize(type, stream);
-
-                TryWriteToChannel(async () => 
-                {
-                    await PacketHandlerManager.Instance.HandleAsync(command, this, message);
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"Failed to deserialize packet - Id:{_id}, {nameof(packetSize)}:{packetSize}");
+                Log.Error($"Unknown packet command - Id:{_id}, command:{command}");
                 return false;
             }
 
+            object message;
+            try
+            {
+                using var stream = new MemoryStream(buffer, offset, packetSize);
+                message = Serializer.Deserialize(type, stream);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Deserialize fail - Id:{_id}, command:{command}, offset:{offset}, packetSize:{packetSize}");
+                return false;
+            }
+
+            TryWriteToChannel(async () =>
+            {
+                await PacketHandlerManager.Instance.HandleAsync(command, this, message);
+            });
+
             return true;
         }
+
 
         public void SendResponse<T>(PacketCommand command, T message) where T : class, IExtensible
         {
@@ -187,10 +183,9 @@ namespace Server
 
             TryWriteToChannel(async () =>
             {
-                bool isEmpty = _sendQueue.Count == 0;
                 _sendQueue.Enqueue(packet);
 
-                if (isEmpty)
+                if (_sendQueue.Count == 1)
                     StartSend(_sendEventArgsEx.SAEA);
 
                 await Task.CompletedTask;
@@ -199,6 +194,7 @@ namespace Server
 
         private void StartSend(SocketAsyncEventArgs e)
         {
+            bool pending = false;
             try
             {
                 var packet = _sendQueue.Peek();
@@ -206,13 +202,17 @@ namespace Server
                 packet.Buffer.AsSpan(0, packet.PacketSize).CopyTo(e.Buffer);
                 e.SetBuffer(0, packet.PacketSize);
 
-                if (_socket.SendAsync(e) == false)
-                    OnSendCompleted(this, e);
+                pending = _socket.SendAsync(e);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, $"SendAsync failed - Id:{Id}");
                 CloseSession();
+            }
+
+            if (pending == false)
+            {
+                OnSendCompleted(this, e);
             }
         }
 
@@ -221,6 +221,7 @@ namespace Server
             TryWriteToChannel(async () =>
             {
                 ProcessSend(e);
+
                 await Task.CompletedTask;
             });
         }
@@ -229,7 +230,7 @@ namespace Server
         {
             if ((e.BytesTransferred <= 0) || (e.SocketError != SocketError.Success))
             {
-                Log.Error($"Send error - Id:{_id}, BytesTransferred:{e.BytesTransferred}, SocketError:{e.SocketError}");
+                Log.Error($"Send error - Id:{_id}, bytesTransferred:{e.BytesTransferred}, socketError:{e.SocketError}");
                 CloseSession();
                 return;
             }
@@ -266,10 +267,16 @@ namespace Server
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void TryWriteToChannel(Func<Task> func)
+        {
+            _channel.TryWrite(new SessionChannelItem(func));
+        }
+
         public void CloseSession()
         {
-            _sessionState = Interlocked.Exchange(ref _sessionState, GlobalConstants.SessionState.Disconnected);
-            if (_sessionState == GlobalConstants.SessionState.Disconnected)
+            int originalSessionState = Interlocked.Exchange(ref _sessionState, GlobalConstants.SessionState.Disconnected);
+            if (originalSessionState == GlobalConstants.SessionState.Disconnected)
                 return;
 
             //채널 종료
@@ -283,7 +290,7 @@ namespace Server
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Failed to shutdown socket of session - Id:{_id}");
+                Log.Error(ex, $"Shutdown fail - Id:{_id}");
             }
             finally
             {
