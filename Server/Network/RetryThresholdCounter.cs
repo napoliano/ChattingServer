@@ -22,7 +22,7 @@ namespace Server
             _onThresholdExceeded = onThresholdExceeded;
         }
 
-        public void Add()
+        public void AddCount()
         {
             ++_retryCount;
             if (_retryCount > _threshold)

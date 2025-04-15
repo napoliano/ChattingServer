@@ -67,7 +67,7 @@ namespace Server
             }
             catch (Exception ex)
             {
-                _acceptRetryCounter.Add();
+                _acceptRetryCounter.AddCount();
 
                 //Accept 재시도
                 StartAccept(e);
@@ -77,7 +77,7 @@ namespace Server
         }
 
         /// <summary>
-        /// Accept를 연달아 실패한 경우 호출
+        /// 연달은 Accept 재시도 한계 초과 시 호출되는 콜백
         /// </summary>
         private void OnAcceptThresholdExceeded()
         {
@@ -122,7 +122,7 @@ namespace Server
 
             try
             {
-                _listenSocket.Close();
+                _listenSocket.Dispose();
             }
             catch (Exception ex)
             {
