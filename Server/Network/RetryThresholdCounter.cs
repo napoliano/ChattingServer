@@ -25,7 +25,7 @@ namespace Server
         public void AddCount()
         {
             ++_retryCount;
-            if (_retryCount > _threshold)
+            if (_retryCount >= _threshold)
             {
                 _onThresholdExceeded?.Invoke();
             }

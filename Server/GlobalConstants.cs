@@ -30,7 +30,7 @@ namespace Server
 
             public static readonly int Backlog = 10000;
 
-            public static readonly int MaxAcceptRetryCount = 5;
+            public static readonly int AcceptRetryThreshold = 5;
         }
         
         public static class SessionState

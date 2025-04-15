@@ -18,7 +18,7 @@ namespace Server
 
         public ListenSocket()
         {
-            _acceptRetryCounter = new(GlobalConstants.Network.MaxAcceptRetryCount, OnAcceptThresholdExceeded);
+            _acceptRetryCounter = new(GlobalConstants.Network.AcceptRetryThreshold, OnAcceptThresholdExceeded);
         }
 
         public bool Start(int port)
@@ -107,6 +107,7 @@ namespace Server
             StartAccept(e);
         }
 
+
         public void Dispose()
         {
             Dispose(true);
@@ -118,19 +119,22 @@ namespace Server
             if (_disposed)
                 return;
 
+            if (disposing)
+            {
+                try
+                {
+                    _listenSocket.Dispose();
+
+                    _acceptEventArgs.Completed -= OnAcceptCompleted;
+                    _acceptEventArgs.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"ListenSocket dispose failed");
+                }
+            }
+
             _disposed = true;
-
-            try
-            {
-                _listenSocket.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"ListenSocket close failed");
-            }
-
-            _acceptEventArgs.Completed -= OnAcceptCompleted;
-            _acceptEventArgs.Dispose();
         }
 
         ~ListenSocket()
