@@ -29,13 +29,7 @@ namespace Server
 
         private readonly Queue<SendPacket> _sendQueue = new();
 
-        private readonly Task _eventLoopTask;
-        private readonly CancellationTokenSource _cts = new();
-        private readonly Channel<Func<Task>> _channel = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions
-        {
-            SingleReader = true,
-            SingleWriter = false
-        }); 
+        private readonly SingleConsumerChannel _channel = new();
 
         private int _sessionState = GlobalConstants.SessionState.Connected;
 
@@ -56,35 +50,12 @@ namespace Server
 
             _sendEventArgsEx.SAEA.SetBuffer(_sendEventArgsEx.Buffer, 0, GlobalConstants.Network.MaxPacketSize);
             _sendEventArgsEx.SAEA.Completed += OnSendCompleted;
-
-            _eventLoopTask = RunEventLoopAsync();
-        }
-
-        private async Task RunEventLoopAsync()
-        {
-            try
-            {
-                await foreach (var func in _channel.Reader.ReadAllAsync(_cts.Token))
-                {
-                    await func();
-                }
-            }
-            //cts가 Cancel된 경우
-            catch (OperationCanceledException) 
-            {
-                Log.Debug($"RunEventLoopAsync canceled - Id:{_id}");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"RunEventLoopAsync failed - Id:{_id}");
-                CloseSession();
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TryWriteToChannel(Func<Task> func)
         {
-            _channel.Writer.TryWrite(func);
+            _channel.TryWrite(new SessionChannelItem(func));
         }
 
 
@@ -151,7 +122,7 @@ namespace Server
                     break;
 
                 int packetSize = MemoryMarshal.Read<short>(e.Buffer.AsSpan(parseBytes));
-                if ((packetSize < PacketHeader.HeaderSize) || (packetSize > PacketBase.MaxPacketSize))
+                if ((packetSize < PacketHeader.HeaderSize) || (packetSize > GlobalConstants.Network.MaxPacketSize))
                 {
                     Log.Error($"Invalid packet size - Id:{_id}, {nameof(packetSize)}:{packetSize}");
                     return false;
@@ -301,9 +272,8 @@ namespace Server
             if (_sessionState == GlobalConstants.SessionState.Disconnected)
                 return;
 
-            //채널 및 이벤트 루프 종료
-            _channel.Writer.Complete();
-            _cts.Cancel();
+            //채널 종료
+            _channel.Close();
 
             ClientSessionManager.Instance.TryRemoveSession(_id);
 

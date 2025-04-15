@@ -12,13 +12,31 @@ namespace Server
         public Task ExecuteAsync();
     }
 
-    public class ChannelItem<T> : IChannelItem
+
+    public class SessionChannelItem : IChannelItem
+    {
+        private readonly Func<Task> _func;
+
+
+        public SessionChannelItem(Func<Task> func)
+        {
+            _func = func;
+        }
+
+        public async Task ExecuteAsync()
+        {
+            await _func();
+        }
+    }
+
+
+    public class ChatRoomGroupChannelItem<T> : IChannelItem
     {
         private readonly Func<Task<T>> _func;
         private readonly TaskCompletionSource<T> _tcs;
 
 
-        public ChannelItem(Func<Task<T>> func, TaskCompletionSource<T> tcs)
+        public ChatRoomGroupChannelItem(Func<Task<T>> func, TaskCompletionSource<T> tcs)
         {
             _func = func;
             _tcs = tcs;

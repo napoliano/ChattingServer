@@ -14,50 +14,21 @@ namespace Server
 
         private readonly int _groupId;
 
-        private readonly Task _eventLoopTask;
-        private readonly CancellationTokenSource _cts = new();
-        private readonly Channel<IChannelItem> _channel = Channel.CreateUnbounded<IChannelItem>(new UnboundedChannelOptions()
-        {
-            SingleReader = true, 
-            SingleWriter = false
-        });
+        private readonly SingleConsumerChannel _channel = new();
 
         
         public ChatRoomGroup(int groupId)
         {
             _groupId = groupId;
-
-            _eventLoopTask = ProcessChannelItemAsync();
-        }
-
-        private async Task ProcessChannelItemAsync()
-        {
-            try
-            {
-                await foreach (var job in _channel.Reader.ReadAllAsync(_cts.Token))
-                {
-                    await job.ExecuteAsync();
-                }
-            }
-            //cts가 Cancel된 경우
-            catch (OperationCanceledException)
-            {
-                Log.Debug($"RunEventLoopAsync canceled - groupId:{_groupId}");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"RunEventLoopAsync failed - groupId:{_groupId}");
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Task<T> TryWriteToChannel<T>(Func<Task<T>> func)
         {
             var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _channel.Writer.TryWrite(new ChannelItem<T>(func, tcs));
+            _channel.TryWrite(new ChatRoomGroupChannelItem<T>(func, tcs));
             return tcs.Task;
         }
-
 
         /// <summary>
         /// 채팅 방 생성

@@ -21,8 +21,6 @@ namespace Server
 
     public abstract class PacketBase
     {
-        public static readonly int MaxPacketSize = 8192;
-
         public int PacketSize => _packetSize;
         protected int _packetSize;
 
